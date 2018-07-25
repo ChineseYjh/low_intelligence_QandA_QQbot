@@ -129,7 +129,7 @@ def I_wonder_baike(question):
 
 def I_wonder_zhidao(question):
     """
-    利用百度百科查询question的百科，并返回内容
+    利用百度知道查询question的百科，并返回内容
     @para: str
     @return: str
     """
