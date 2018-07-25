@@ -13,11 +13,12 @@ import datetime
 import requests
 import re
 from bs4 import BeautifulSoup as bs
+from bs4 import NavigableString as NavigableString
 
 robot_card = "QQ小水"
 group_members_path = lambda group_nick : '.qqbot-tmp/plugins/members_of_group_{}.txt'.format(group_nick)
 group_chat_log_path = lambda group_nick : '.qqbot-tmp/plugins/chat_log_of_group_{}.txt'.format(group_nick)
-#my_group_name = ""
+#my_group_name = "18届咨询咨询群"
 log_time_obj = datetime.datetime(2018,7,3)
 
 def check_new_member(bot,contact):
@@ -73,7 +74,7 @@ def check_new_member(bot,contact):
         raise
         pass
 
-def I_wonder(question):
+def I_wonder_baike(question):
     """
     利用百度百科查询question的百科，并返回内容
     @para: str
@@ -91,7 +92,7 @@ def I_wonder(question):
     print("visiting the answer...")
     result_url_div = soup.select("[class~=result-title]")
     if(result_url_div == []):
-        return "嘤嘤嘤，小冰也不知道/快哭了..."
+        return "嘤嘤嘤，小水也不知道/快哭了..."
     result_url_div = result_url_div[0]
     result_url = result_url_div.attrs['href']
     if ("https://baike.baidu.com" not in result_url):
@@ -124,15 +125,80 @@ def I_wonder(question):
                 tempnode = string
         return answer
     except:
-        return "嘤嘤嘤，小冰也不知道/快哭了..."
+        return "嘤嘤嘤，小水也不知道/快哭了..."
 
-def onQQMessage(bot, contact, member, content):
+def I_wonder_zhidao(question):
+    """
+    利用百度百科查询question的百科，并返回内容
+    @para: str
+    @return: str
+    """
+    zhidao_url = "https://zhidao.baidu.com/search?ie=utf-8&word="
+    headers = {'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'}
+    print("quering the question...")
+    r = requests.get(url=zhidao_url+question, headers=headers)
+    r.raise_for_status()
+    r.encoding = r.apparent_encoding
+    soup = bs(r.text,'html.parser')
+    #访问第一个非广告链接
+    print("visiting the answer...")
+    result_url_div = soup.select("#wgt-list > dl:nth-of-type(1) > dt > a")
+    if(result_url_div == []):
+        return "嘤嘤嘤，小水也不知道/快哭了..."
+    result_url_div = result_url_div[0]
+    #print(result_url_div)
+    result_url = result_url_div.attrs['href']
+    r = requests.get(url=result_url, headers=headers)
+    r.raise_for_status()
+    r.encoding = r.apparent_encoding
+    #print(r.text[:500])
+    #抽取最佳答案
+    print("extracting the best data...")
+    soup = bs(r.text, 'html.parser')
+    #<div id='best-content-...'>
+    tag = soup.find(name='div',attrs={'id':re.compile("best-content-[0-9]*")})
+    #<pre>
+    if(tag == None):
+        tag = soup.find(name='pre',attrs={'id':re.compile("best-content-[0-9]*")})
+        if(tag != None and tag.string != None):
+            return str(tag.string)
+    #<div id='answer-content-...'>
+    if(tag == None):
+        tag = soup.find(name='div',attrs={'id':re.compile("answer-content-[0-9]*")})
+    #print(tag, tag.string, sep='\n')
+    answer = ""
+    temp = ""#防止重复（在遍历时有的string一次在标签中一次本身被遍历）
+    for p in tag.descendants:
+        print(p)
+        #<p>string</p>
+        if(p.name == 'p' and p.string != None and temp != str(p.string)):
+            temp = str(p.string)
+            answer += temp
+        #<a href="link">...</a>
+        elif (p.name == 'a' and str(p.string) != "展开"):
+            answer += ('\n' + p.attrs['href'] + '\n')
+        #<span>string</span>
+        elif(p.name == 'span' and p.string != None and temp != str(p.string)):
+            temp = str(p.string)
+            answer += temp
+        #<a>展开<\a>
+        elif(p.name == 'a' and str(p.string) == "展开"):
+            print("need expand")
+        #string
+        elif(type(p) == NavigableString and str(p) != "展开全部" and temp != str(p)):
+            temp = str(p)
+            answer += temp
+        #print("temp:", temp)
+    #print("answer: ", answer)
+    return answer
     
+def onQQMessage(bot, contact, member, content):
 # =============================================================================
 #     """先确定是否是指定的群"""
 #     if (contact.nick != my_group_name):
 #         return
 # =============================================================================
+
     """先确定是群，才回复"""
     if (member == None): 
         return
@@ -146,7 +212,7 @@ def onQQMessage(bot, contact, member, content):
         time.sleep(random.uniform(0.7,2.3))
         #发送信息
         print(os.path.abspath("."))
-        response = I_wonder(content.replace("[@ME]",''))
+        response = I_wonder_baike(content.replace("[@ME]",''))
         bot.SendTo(contact,response)
         #记录日志
         with open(group_chat_log_path(contact.nick),'a') as f:
@@ -154,15 +220,15 @@ def onQQMessage(bot, contact, member, content):
             f.write(member.nick + ': ' + content + '\n')
             f.write('ROBOT: ' + response + '\n')
             f.write("""
-                    ===============================================================
+===============================================================
                     """)
     #当content内没有@机器人的信息时，在一定概率下进行自我推销
-    elif (random.randint(1,10) == 9):
+    elif (random.randint(1,100) == 9):
         #1/10的可能性
         time.sleep(random.uniform(1.3,3.3))
         default_content = """
         想和我聊天吗？我还在升级对话系统，完成后就能完全回来陪你们啦！
-        来~预热一下，@我来问问题，看看小冰能答对几个诶嘿嘿嘿/可爱
+        来~预热一下，@我来问问题，看看小水能答对几个诶嘿嘿嘿/可爱
         """
         bot.SendTo(contact,default_content)
         
