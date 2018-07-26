@@ -62,8 +62,10 @@ def I_wonder_baike(question):
                     string = string.replace("\xa0","")
                 answer += string
                 tempnode = string
+        #print("baike done.")
         return answer
     except:
+        #print("baike done.")
         return None
 
 
@@ -101,17 +103,19 @@ def I_wonder_zhidao(question):
     if(tag == None):
         tag = soup.find(name='pre',attrs={'id':re.compile("best-content-[0-9]*")})
         if(tag != None and tag.string != None):
+            #print("zhidao done.")
             return str(tag.string)
     #<div id='answer-content-...'>
     if(tag == None):
         tag = soup.find(name='div',attrs={'id':re.compile("answer-content-[0-9]*")})
     #print(tag, tag.string, sep='\n')
     if(tag == None):
+        #print("zhidao done.")
         return None
     answer = ""
     temp = ""#防止重复（在遍历时有的string一次在标签中一次本身被遍历）
     for p in tag.descendants:
-        print(p)
+        #print(p)
         #<p>string</p>
         if(p.name == 'p' and p.string != None and temp != str(p.string)):
             temp = str(p.string)
@@ -127,12 +131,16 @@ def I_wonder_zhidao(question):
         elif(p.name == 'a' and str(p.string) == "展开"):
             print("need expand")
         #string
-        elif(type(p) == NavigableString and str(p) != "展开全部" and temp != str(p)):
+        elif(type(p) == NavigableString and str(p) != "\n展开全部\n" and temp != str(p)):
             temp = str(p)
             answer += temp
         #print("temp:", temp)
     #print("answer: ", answer)
+    #print("zhidao done.")
     return answer
 
-
+if __name__ == '__main__':
+    question = "如何高效学习"
+    answer = I_wonder_zhidao(question)
+    print(answer)
 
